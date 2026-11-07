@@ -1,0 +1,179 @@
+﻿MÓDULO 1: IDENTIFICACIÓN DEL CPU PARA WINDOWS X64
+
+El objetivo de este módulo es identificar el procesador de la computadora y mostrar su nombre comercial, fabricante, arquitectura, familia, modelo y extensiones disponibles. El programa está desarrollado en ensamblador NASM x86-64 y adaptado para Windows de 64 bits.
+
+INSTRUCCIONES PARA EJECUTAR EL PROGRAMA
+
+1. ABRIR LA CARPETA DEL PROYECTO
+
+Abra la carpeta Modulo_1_CPU_Windows, previamente extraída del archivo ZIP. Compruebe que se encuentren los archivos cpu.exe y EJECUTAR.bat.
+
+2. EJECUTAR EL PROGRAMA
+
+Haga doble clic en EJECUTAR.bat.
+
+Se abrirá una ventana que mostrará la información del procesador de su computadora. Para utilizar el ejecutable incluido no necesita instalar compiladores ni ejecutarlo como administrador.
+
+3. REVISAR LOS RESULTADOS
+
+El programa muestra los siguientes datos:
+
+- Procesador: nombre comercial que informa el CPU.
+- Fabricante: identificador del fabricante.
+- Arquitectura: arquitectura x86-64 del programa.
+- Familia: identificador técnico de la familia del procesador.
+- Modelo: identificador técnico del modelo.
+- Extensiones: disponibilidad de SSE, SSE2, SSE4.2, AVX, AVX2 y AVX-512F.
+- Extensiones utilizables: comprobación del estado necesario para usar AVX, AVX2 y AVX-512F.
+
+Cuando una extensión aparece con Sí, significa que el procesador informa que la admite. Cuando aparece No, esa característica no está disponible.
+
+El programa también comprueba si el sistema operativo permite utilizar las extensiones AVX. Por eso, una extensión puede estar presente en el procesador y no estar habilitada para su uso.
+
+AVX-512F corresponde a la extensión fundamental de AVX-512; su detección no significa que estén disponibles todas las subextensiones de esa familia.
+
+4. GUARDAR LA EVIDENCIA
+
+Para guardar los resultados, haga doble clic en GUARDAR_EVIDENCIA.bat.
+
+Se creará el archivo evidencia_cpu.txt dentro de la misma carpeta. Si ya existe, el programa preguntará antes de reemplazarlo.
+
+También puede tomar una captura de pantalla de los resultados mostrados en la ventana.
+
+5. CERRAR EL PROGRAMA
+
+Después de revisar la información, presione cualquier tecla para cerrar la ventana.
+
+Si necesita consultar nuevamente los datos, vuelva a ejecutar EJECUTAR.bat.
+
+
+CÓMO DESARROLLÉ EL MÓDULO
+
+1. ORGANIZACIÓN DEL CÓDIGO
+
+Utilicé ensamblador NASM para la arquitectura x86-64 y organicé el código en tres secciones:
+
+- section .data: contiene los mensajes que aparecen en pantalla, como “Procesador”, “Fabricante” y las respuestas “Sí” y “No”.
+- section .bss: reserva espacio para guardar los datos obtenidos del procesador.
+- section .text: contiene las instrucciones que realizan las consultas, procesan los datos y muestran los resultados.
+
+Usé nombres de variables y etiquetas en español para que el código fuera más fácil de comprender y explicar.
+
+2. PREPARACIÓN DEL PROGRAMA PARA WINDOWS
+
+El programa comienza en la etiqueta inicio. Primero prepara la pila, respetando la alineación y el espacio que requieren las llamadas a funciones de Windows x64.
+
+Después utiliza GetStdHandle para obtener el identificador de la salida estándar. Ese valor se guarda en salida_consola y se utiliza para mostrar los resultados en pantalla o escribirlos en un archivo cuando se redirige la salida.
+
+3. IDENTIFICACIÓN DEL FABRICANTE
+
+Para consultar los datos del procesador utilicé la instrucción CPUID.
+
+Esta instrucción recibe un número de consulta, llamado hoja, en el registro EAX. Dependiendo de la hoja seleccionada, devuelve diferentes datos del CPU.
+
+Primero consulté la hoja 0, que informa el fabricante y la hoja básica máxima disponible.
+
+El identificador del fabricante se devuelve dividido entre los registros EBX, EDX y ECX. Guardé esas partes, en ese orden, dentro de fabricante_cpu para poder mostrarlas como texto.
+
+4. OBTENCIÓN DEL NOMBRE COMERCIAL
+
+Consulté la hoja 80000000h para conocer qué consultas extendidas admite el procesador.
+
+Cuando están disponibles las hojas 80000002h, 80000003h y 80000004h, el programa consulta las tres. Cada una devuelve una parte del nombre comercial.
+
+Guardé esas partes consecutivamente en nombre_cpu. Si el procesador no proporciona esas consultas, se muestra el mensaje “No informado por CPUID”.
+
+De esta manera, el nombre se obtiene de la información que entrega el CPU.
+
+5. CÁLCULO DE LA FAMILIA Y EL MODELO
+
+Consulté la hoja 1 de CPUID, que devuelve en EAX varios campos de identificación.
+
+Utilicé desplazamientos y máscaras de bits para separar la familia y el modelo. También consideré los campos extendidos cuando correspondía.
+
+Finalmente, guardé los resultados en familia_cpu y modelo_cpu.
+
+Estos valores son identificadores técnicos. Por ejemplo, el número de familia no necesariamente coincide con la generación comercial que aparece en el nombre del procesador.
+
+6. DETECCIÓN DE LAS EXTENSIONES
+
+Para comprobar las extensiones, revisé los bits que devuelve CPUID.
+
+En la hoja 1 comprobé SSE, SSE2, SSE4.2 y AVX. Para detectar AVX2 y AVX-512F utilicé la hoja 7, subhoja 0, después de verificar que estuviera disponible.
+
+Cada característica está representada por un bit. Apliqué una máscara para comprobar si ese bit estaba activado.
+
+Si el resultado indicaba que la característica estaba presente, el programa mostraba “Sí”. En caso contrario, mostraba “No”.
+
+7. COMPROBACIÓN DEL USO DE AVX
+
+Además de detectar el soporte del procesador, comprobé el estado habilitado por el sistema operativo.
+
+Primero revisé las características XSAVE, OSXSAVE y AVX. Cuando estaban presentes, utilicé XGETBV para consultar el registro XCR0.
+
+Ese registro permite comprobar si están habilitados los estados necesarios para utilizar los registros de AVX. Para AVX-512F también revisé los estados adicionales de máscaras y registros ZMM.
+
+Con esta comprobación, el programa diferencia entre las extensiones que admite el procesador y las que pueden utilizarse con la configuración actual del sistema operativo.
+
+8. PRESENTACIÓN DE LOS RESULTADOS
+
+Creé la rutina imprimir_texto para mostrar las cadenas de caracteres.
+
+Esta rutina cuenta los caracteres del mensaje y utiliza WriteFile para escribirlos en la salida estándar. También contempla escrituras parciales: si no se escriben todos los caracteres en una llamada, continúa con los restantes.
+
+Para mostrar la familia y el modelo creé imprimir_numero. Esta rutina convierte los valores numéricos a texto mediante divisiones entre diez.
+
+También agregué rutinas para mostrar las respuestas “Sí” y “No”, y para realizar los saltos de línea.
+
+Si ocurre un fallo de escritura, el programa termina con un código de error.
+
+9. VARIABLES UTILIZADAS
+
+- nombre_cpu: guarda el nombre comercial del procesador.
+- fabricante_cpu: guarda el identificador del fabricante.
+- familia_cpu: almacena la familia calculada.
+- modelo_cpu: almacena el modelo calculado.
+- hoja_maxima: guarda la hoja básica máxima disponible.
+- hoja_extendida: guarda la hoja extendida máxima disponible.
+- caracteristicas_ecx: almacena características de la hoja 1.
+- caracteristicas_edx: almacena otras características de la hoja 1.
+- caracteristicas_ebx7: guarda características de la hoja 7.
+- estado_sistema: almacena el estado XCR0 habilitado por el sistema operativo.
+- salida_consola: guarda el identificador de salida de Windows.
+- numero_decimal: reserva espacio para convertir números a texto.
+
+10. GENERACIÓN DEL EJECUTABLE
+
+El archivo cpu.asm se ensambla con NASM para producir cpu.obj. Después, el archivo objeto se enlaza con las funciones necesarias de Windows para generar cpu.exe.
+
+El programa utiliza tres funciones principales de Windows:
+
+- GetStdHandle: obtiene el identificador de salida.
+- WriteFile: escribe los resultados.
+- ExitProcess: finaliza el programa.
+
+La identificación del procesador se realiza mediante instrucciones del CPU, mientras que estas funciones permiten presentar la información y terminar la ejecución.
+
+11. ARCHIVOS BAT
+
+Agregué archivos .bat para facilitar el uso del proyecto:
+
+- EJECUTAR.bat: ejecuta cpu.exe y mantiene visible la ventana hasta que se presiona una tecla.
+- GUARDAR_EVIDENCIA.bat: guarda los resultados en evidencia_cpu.txt.
+- COMPILAR.bat: permite reconstruir el ejecutable cuando están instaladas las herramientas necesarias.
+
+Con estos archivos, una persona puede ejecutar el programa y guardar sus resultados sin escribir comandos manualmente.
+
+12. VERIFICACIÓN REALIZADA
+
+El código fue ensamblado y enlazado como un ejecutable de consola para Windows x64.
+
+Se verificaron ocho escenarios mediante emulación: procesadores Intel y AMD, nombre comercial ausente, AVX no disponible, AVX sin estado habilitado, AVX sin estado ZMM, escrituras parciales y fallo de escritura.
+
+También se revisaron la alineación de la pila y el manejo de registros en las llamadas a las funciones de Windows.
+
+Estas pruebas no sustituyen una ejecución en Windows nativo. Queda pendiente comprobar el ejecutable y el archivo de recompilación en una computadora con Windows.
+
+ALCANCE
+
+Este proyecto contiene únicamente el módulo de identificación del CPU y está adaptado para Windows x64. El enunciado original solicita Linux, por lo que debe confirmarse con el docente si acepta esta adaptación para la entrega.
